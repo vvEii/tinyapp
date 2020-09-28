@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/vvEii/tinyapp/issues"
   },
-  "homepage": "https://github.com/vvEii/tinyapp#readme"
+  "homepage": "https://github.com/vvEii/tinyapp#readme",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
 }
