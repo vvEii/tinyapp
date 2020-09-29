@@ -1,13 +1,26 @@
 const express = require('express');
+const bodyParser = require("body-parser");
 const app = express();
 const PORT = 8080;
 
 app.set('view engine', 'ejs');
+app.use(bodyParser.urlencoded({extended: true}));
+
+const generateRandomString = function() {
+  return Math.random().toString(20).substr(2,6);
+};
 
 const urlDatabase = {
   b2xVn2: 'http://www.lighthouselabs.ca',
   '9sm5xK': 'http://www.google.com',
 };
+app.post("/urls", (req, res) => {
+  const shortURL = generateRandomString();
+  const longURL = req.body.longURL;
+  urlDatabase[shortURL] = longURL;
+  console.log(urlDatabase);
+  res.send("Ok");
+});
 
 app.get('/urls/new', (req, res) => {
   res.render('urls_new');
