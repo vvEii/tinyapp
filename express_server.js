@@ -1,27 +1,47 @@
 const express = require('express');
-const bodyParser = require("body-parser");
+const bodyParser = require('body-parser');
 const app = express();
 const PORT = 8080;
 
 app.set('view engine', 'ejs');
-app.use(bodyParser.urlencoded({extended: true}));
+app.use(bodyParser.urlencoded({ extended: true }));
 
-const generateRandomString = function() {
-  return Math.random().toString(20).substr(2,6);
+const generateRandomString = function () {
+  return Math.random().toString(20).substr(2, 6);
 };
 
 const urlDatabase = {
   b2xVn2: 'http://www.lighthouselabs.ca',
   '9sm5xK': 'http://www.google.com',
 };
-app.post("/urls", (req, res) => {
-  const shortURL = generateRandomString();
-  const longURL = req.body.longURL;
-  urlDatabase[shortURL] = longURL;
-  console.log(urlDatabase);
-  res.send("Ok");
+
+app.post('/urls/:shortURL/delete', (req,res) => {
+  const shortURL = req.params.shortURL;
+  delete urlDatabase[shortURL];
+  res.redirect('/urls');
 });
 
+app.post('/urls', (req, res) => {
+  const shortURL = generateRandomString();
+  const longURL = req.body.longURL;
+  //urlDatabase[shortURL] = longURL;
+  const templateVars = {
+    shortURL,
+    longURL,
+  };
+  console.log(urlDatabase);
+  res.render('urls_show', templateVars);
+});
+
+app.get('/u/:shortURL', (req, res) => {
+  const shortURL = req.params.shortURL;
+  if (shortURL in urlDatabase) {
+    const longURL = urlDatabase[shortURL];
+    res.redirect(longURL);
+  } else {
+    res.send('URL is not found!');
+  }
+});
 app.get('/urls/new', (req, res) => {
   res.render('urls_new');
 });
