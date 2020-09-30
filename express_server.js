@@ -8,9 +8,6 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-const generateRandomString = function () {
-  return Math.random().toString(20).substr(2, 6);
-};
 //mock URL info
 const urlDatabase = {
   b2xVn2: 'http://www.lighthouselabs.ca',
@@ -30,17 +27,41 @@ const users = {
   },
 };
 
+//helper function to generate a random 6 digits string
+const generateRandomString = function () {
+  return Math.random().toString(20).substr(2, 6);
+};
+
+//helper function to check if an email is already exist in the users object
+const isEmailExist = function (email) {
+  for (const user of Object.keys(users)) {
+    if (users[user].email === email) {
+      return true;
+    }
+  }
+  return false;
+};
+
 //register
-app.post('/register', (req,res) => {
-  const id = generateRandomString();
-  const user = {
-    id,
-    email: req.body.email,
-    password:req.body.password
-  };
-  users[id] = user;
-  console.log(users);
-  res.cookie('user_id', id).redirect('/urls');
+app.post('/register', (req, res) => {
+  const email = req.body.email;
+  const password = req.body.password;
+  if (email && password && !isEmailExist(email)) {
+    const id = generateRandomString();
+    const user = {
+      id,
+      email: req.body.email,
+      password: req.body.password,
+    };
+    users[id] = user;
+    res.cookie('user_id', id).redirect('/urls');
+  } else if (isEmailExist(email)) {
+    res.statusCode = 400;
+    res.send('The email is aleardy exist!');
+  } else {
+    res.statusCode = 400;
+    res.send('The email or password is empty');
+  }
 });
 //logout
 app.post('/logout', (req, res) => {
@@ -97,7 +118,6 @@ app.get('/register', (req, res) => {
   res.render('urls_register');
 });
 
-
 app.get('/urls/new', (req, res) => {
   const userId = req.cookies.user_id;
   const user = users[userId];
@@ -120,9 +140,17 @@ app.get('/urls/:shortURL', (req, res) => {
 
 //home page
 app.get('/urls', (req, res) => {
-  console.log(users[req.cookies.user_id]);
-  const templateVars = { urls: urlDatabase, user: users[req.cookies.user_id] };
-  res.render('urls_index', templateVars);
+  const userId = req.cookies.user_id;
+  if (userId) {
+    const templateVars = {
+      urls: urlDatabase,
+      user: users[req.cookies.user_id],
+    };
+    res.render('urls_index', templateVars);
+  } else {
+    res.statusCode = 400;
+    res.send('Please login in.');
+  }
 });
 
 app.get('/urls.json', (req, res) => {
