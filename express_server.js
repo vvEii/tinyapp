@@ -113,6 +113,11 @@ app.get('/u/:shortURL', (req, res) => {
   }
 });
 
+//login page
+app.get('/login', (req,res) =>{
+  res.render('urls_login');
+});
+
 //register page
 app.get('/register', (req, res) => {
   res.render('urls_register');
