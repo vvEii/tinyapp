@@ -65,6 +65,10 @@ app.get('/u/:shortURL', (req, res) => {
   }
 });
 
+//register page
+app.get('/register',(req,res) => {
+  res.render('urls_register');
+});
 
 app.get('/urls/new', (req, res) => {
   const username = req.cookies.username;
@@ -91,10 +95,17 @@ app.get('/urls', (req, res) => {
 app.get('/urls.json', (req, res) => {
   res.json(urlDatabase);
 });
-
-app.get('/', (req, res) => {
-  res.send('Hello');
+//404 page
+app.get('*', (req, res) => {
+  res.statusCode = 404;
+  res.render("404page");
 });
+//404 page
+app.post('*', (req, res) => {
+  res.statusCode = 404;
+  res.render("404page");
+});
+
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}! `);
 });
