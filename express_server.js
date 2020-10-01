@@ -10,10 +10,10 @@ app.use(cookieParser());
 
 //mock URL info
 const urlDatabase = {
-  b2xVn2: 'http://www.lighthouselabs.ca',
-  '9sm5xK': 'http://www.google.com',
+  b6UTxQ: { longURL: 'https://www.tsn.ca', userID: 'aJ48lW' },
+  i3BoGr: { longURL: 'https://www.google.ca', userID: 'aJ48lW' },
 };
-//mock user info
+//mock users info
 const users = {
   userRandomID: {
     id: 'userRandomID',
@@ -50,6 +50,20 @@ const isPasswordEqual = function (email, password) {
     }
   }
   return false;
+};
+
+//helper function to return urls that owned by the userId provied
+const urlsForUser = function (userId) {
+  let urlsOwnedByUser = {};
+  for (const url of Object.keys(urlDatabase)) {
+    if (urlDatabase[url].userID === userId) {
+      urlsOwnedByUser[url] = {
+        longURL: urlDatabase[url].longURL,
+        userID: urlDatabase[url].userID,
+      };
+    }
+  }
+  return urlsOwnedByUser;
 };
 
 //register
@@ -104,27 +118,41 @@ app.post('/login', (req, res) => {
 
 //delete URL
 app.post('/urls/:shortURL/delete', (req, res) => {
+  const userID = req.cookies.user_id;
   const shortURL = req.params.shortURL;
-  delete urlDatabase[shortURL];
-  res.redirect('/urls');
+  if (urlDatabase[shortURL].userID === userID) {
+    delete urlDatabase[shortURL];
+    res.redirect('/urls');
+  } else {
+    res.send("You can't delete usrls that are not belong to you!");
+  }
 });
-//edit URL
+//update URL
 app.post('/urls/:shortURL/edit', (req, res) => {
+  const userID = req.cookies.user_id;
   const shortURL = req.params.shortURL;
-  const longURL = req.body.longURL;
-  urlDatabase[shortURL] = longURL;
-  res.redirect('/urls');
+  if (urlDatabase[shortURL].userID === userID) {
+    const longURL = req.body.longURL;
+    urlDatabase[shortURL].longURL = longURL;
+    res.redirect('/urls');
+  } else {
+    res.send("You can't edit urls that are not belong to you!");
+  }
 });
 //create new URL
 app.post('/urls', (req, res) => {
   const shortURL = generateRandomString();
   const longURL = req.body.longURL;
-  const userId = req.cookies.user_id;
-  urlDatabase[shortURL] = longURL;
-  const user = users[userId];
+  const userID = req.cookies.user_id;
+  urlDatabase[shortURL] = {
+    longURL,
+    userID,
+  };
+  const user = users[userID];
   const templateVars = {
     shortURL,
     longURL,
+    userID,
     user,
   };
   res.render('urls_show', templateVars);
@@ -134,7 +162,7 @@ app.post('/urls', (req, res) => {
 app.get('/u/:shortURL', (req, res) => {
   const shortURL = req.params.shortURL;
   if (shortURL in urlDatabase) {
-    const longURL = urlDatabase[shortURL];
+    const longURL = urlDatabase[shortURL].longURL;
     res.redirect(longURL);
   } else {
     res.send('URL is not found!');
@@ -144,7 +172,7 @@ app.get('/u/:shortURL', (req, res) => {
 //login page
 app.get('/login', (req, res) => {
   const templateVars = {
-    user:undefined
+    user: undefined,
   };
 
   res.render('urls_login', templateVars);
@@ -153,13 +181,18 @@ app.get('/login', (req, res) => {
 //register page
 app.get('/register', (req, res) => {
   const templateVars = {
-    user:undefined
+    user: undefined,
   };
   res.render('urls_register', templateVars);
 });
 
+//create new url
 app.get('/urls/new', (req, res) => {
   const userId = req.cookies.user_id;
+  if (!userId) {
+    res.redirect('/login');
+    return;
+  }
   const user = users[userId];
   const templateVars = {
     user,
@@ -167,12 +200,13 @@ app.get('/urls/new', (req, res) => {
   res.render('urls_new', templateVars);
 });
 
+//edit URL
 app.get('/urls/:shortURL', (req, res) => {
   const userId = req.cookies.user_id;
   const user = users[userId];
   const templateVars = {
     shortURL: req.params.shortURL,
-    longURL: urlDatabase[req.params.shortURL],
+    longURL: urlDatabase[req.params.shortURL].longURL,
     user,
   };
   res.render('urls_show', templateVars);
@@ -181,9 +215,10 @@ app.get('/urls/:shortURL', (req, res) => {
 //home page
 app.get('/urls', (req, res) => {
   const userId = req.cookies.user_id;
+  const urls = urlsForUser(userId);
   const templateVars = {
-    urls: urlDatabase,
-    user: users[req.cookies.user_id],
+    urls,
+    user: users[userId],
   };
   res.render('urls_index', templateVars);
 });
@@ -203,5 +238,5 @@ app.post('*', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Example app listening on port ${PORT}! `);
+  console.log(`TinyApp listening on port ${PORT}! `);
 });
