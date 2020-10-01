@@ -1,7 +1,9 @@
+//bug create new URL -> submit -> click the shortURL -> URL is not found -> click back using browser -> accidently created one new shortURL
 const express = require('express');
 const bodyParser = require('body-parser');
 const cookieSession = require('cookie-session');
 const bcrypt = require('bcrypt');
+const {getUserByEmail, urlsForUser, generateRandomString} = require('./helpers');
 const app = express();
 const PORT = 8080;
 
@@ -31,43 +33,17 @@ const users = {
   },
 };
 
-//helper function to generate a random 6 digits string
-const generateRandomString = function () {
-  return Math.random().toString(20).substr(2, 6);
-};
-
-//helper function to check if an email is already exist in the users object
-const isEmailExist = function (email) {
-  for (const user of Object.keys(users)) {
-    if (users[user].email === email) {
-      return true;
-    }
-  }
-  return false;
-};
-
 //helper function to compare if password is equal. It assumes the email passed in is already exist in the users obejct
-const isPasswordEqual = function (email, password) {
+const isPasswordEqual = function (email, password,) {
   for (const user of Object.keys(users)) {
-    if (users[user].email === email && bcrypt.compareSync(password, users[user].password)) {
+    if (
+      users[user].email === email &&
+      bcrypt.compareSync(password, users[user].password)
+    ) {
       return true;
     }
   }
   return false;
-};
-
-//helper function to return urls that owned by the userId provied
-const urlsForUser = function (userId) {
-  let urlsOwnedByUser = {};
-  for (const url of Object.keys(urlDatabase)) {
-    if (urlDatabase[url].userID === userId) {
-      urlsOwnedByUser[url] = {
-        longURL: urlDatabase[url].longURL,
-        userID: urlDatabase[url].userID,
-      };
-    }
-  }
-  return urlsOwnedByUser;
 };
 
 //register
@@ -75,18 +51,18 @@ app.post('/register', (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
   const hashedPassword = bcrypt.hashSync(password,10);
-  if (email && password && !isEmailExist(email)) {
+  const user = getUserByEmail(email,users);
+  if (email && password && !user) {
     const userID = generateRandomString();
     const user = {
       id: userID,
       email: req.body.email,
       password: hashedPassword,
     };
-    console.log(user);
     users[userID] = user;
     req.session.user_id = userID;
     res.redirect('/urls');
-  } else if (isEmailExist(email)) {
+  } else if (user) {
     res.statusCode = 400;
     res.send('The email is aleardy exist!');
   } else {
@@ -104,7 +80,8 @@ app.post('/logout', (req, res) => {
 app.post('/login', (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
-  if (!isEmailExist(email)) {
+  const user = getUserByEmail(email,users);
+  if (!user) {
     res.statusCode = 403;
     res.send('The email is not found');
     return;
@@ -114,13 +91,7 @@ app.post('/login', (req, res) => {
     res.send('The password is not right');
     return;
   }
-  let userId;
-  for (const user of Object.keys(users)) {
-    if (users[user].email === email) {
-      userId = users[user].id;
-      break;
-    }
-  }
+  const userId = user.id;
   req.session.user_id = userId;
   res.redirect('/urls');
 });
@@ -167,7 +138,7 @@ app.post('/urls', (req, res) => {
   res.render('urls_show', templateVars);
 });
 
-//read one specific URL pair
+//redirect to longURL
 app.get('/u/:shortURL', (req, res) => {
   const shortURL = req.params.shortURL;
   if (shortURL in urlDatabase) {
@@ -223,7 +194,7 @@ app.get('/urls/:shortURL', (req, res) => {
 //home page
 app.get('/urls', (req, res) => {
   const userId = req.session.user_id;
-  const urls = urlsForUser(userId);
+  const urls = urlsForUser(userId,urlDatabase);
   const templateVars = {
     urls,
     user: users[userId],
