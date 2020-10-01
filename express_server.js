@@ -42,19 +42,29 @@ const isEmailExist = function (email) {
   return false;
 };
 
+//helper function to compare if password is equal. It assumes the email passed in is already exist in the users obejct
+const isPasswordEqual = function (email, password) {
+  for (const user of Object.keys(users)) {
+    if (users[user].email === email && users[user].password === password) {
+      return true;
+    }
+  }
+  return false;
+};
+
 //register
 app.post('/register', (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
   if (email && password && !isEmailExist(email)) {
-    const id = generateRandomString();
+    const userID = generateRandomString();
     const user = {
-      id,
+      id: userID,
       email: req.body.email,
       password: req.body.password,
     };
-    users[id] = user;
-    res.cookie('user_id', id).redirect('/urls');
+    users[userID] = user;
+    res.cookie('user_id', userID).redirect('/urls');
   } else if (isEmailExist(email)) {
     res.statusCode = 400;
     res.send('The email is aleardy exist!');
@@ -65,13 +75,31 @@ app.post('/register', (req, res) => {
 });
 //logout
 app.post('/logout', (req, res) => {
-  res.clearCookie('user_id').redirect('/register');
+  res.clearCookie('user_id').redirect('/urls');
 });
 
 //login
 app.post('/login', (req, res) => {
-  const username = req.body.username;
-  res.cookie('username', username).redirect('/urls');
+  const email = req.body.email;
+  const password = req.body.password;
+  if (!isEmailExist(email)) {
+    res.statusCode = 403;
+    res.send('The email is not found');
+    return;
+  }
+  if (!isPasswordEqual(email, password)) {
+    res.statusCode = 403;
+    res.send('The password is not right');
+    return;
+  }
+  let userId;
+  for (const user of Object.keys(users)) {
+    if (users[user].email === email) {
+      userId = users[user].id;
+      break;
+    }
+  }
+  res.cookie('user_id', userId).redirect('/urls');
 });
 
 //delete URL
@@ -114,13 +142,20 @@ app.get('/u/:shortURL', (req, res) => {
 });
 
 //login page
-app.get('/login', (req,res) =>{
-  res.render('urls_login');
+app.get('/login', (req, res) => {
+  const templateVars = {
+    user:undefined
+  };
+
+  res.render('urls_login', templateVars);
 });
 
 //register page
 app.get('/register', (req, res) => {
-  res.render('urls_register');
+  const templateVars = {
+    user:undefined
+  };
+  res.render('urls_register', templateVars);
 });
 
 app.get('/urls/new', (req, res) => {
@@ -146,16 +181,11 @@ app.get('/urls/:shortURL', (req, res) => {
 //home page
 app.get('/urls', (req, res) => {
   const userId = req.cookies.user_id;
-  if (userId) {
-    const templateVars = {
-      urls: urlDatabase,
-      user: users[req.cookies.user_id],
-    };
-    res.render('urls_index', templateVars);
-  } else {
-    res.statusCode = 400;
-    res.send('Please login in.');
-  }
+  const templateVars = {
+    urls: urlDatabase,
+    user: users[req.cookies.user_id],
+  };
+  res.render('urls_index', templateVars);
 });
 
 app.get('/urls.json', (req, res) => {
