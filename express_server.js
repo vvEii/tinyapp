@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
+const bcrypt = require('bcrypt');
 const app = express();
 const PORT = 8080;
 
@@ -45,7 +46,7 @@ const isEmailExist = function (email) {
 //helper function to compare if password is equal. It assumes the email passed in is already exist in the users obejct
 const isPasswordEqual = function (email, password) {
   for (const user of Object.keys(users)) {
-    if (users[user].email === email && users[user].password === password) {
+    if (users[user].email === email && bcrypt.compareSync(password, users[user].password)) {
       return true;
     }
   }
@@ -70,13 +71,15 @@ const urlsForUser = function (userId) {
 app.post('/register', (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
+  const hashedPassword = bcrypt.hashSync(password,10);
   if (email && password && !isEmailExist(email)) {
     const userID = generateRandomString();
     const user = {
       id: userID,
       email: req.body.email,
-      password: req.body.password,
+      password: hashedPassword,
     };
+    console.log(user);
     users[userID] = user;
     res.cookie('user_id', userID).redirect('/urls');
   } else if (isEmailExist(email)) {
