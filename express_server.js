@@ -3,16 +3,22 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cookieSession = require('cookie-session');
 const bcrypt = require('bcrypt');
-const {getUserByEmail, urlsForUser, generateRandomString} = require('./helpers');
+const {
+  getUserByEmail,
+  urlsForUser,
+  generateRandomString,
+} = require('./helpers');
 const app = express();
 const PORT = 8080;
 
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cookieSession({
-  name:'session',
-  keys:['key1','key2']
-}));
+app.use(
+  cookieSession({
+    name: 'session',
+    keys: ['key1', 'key2'],
+  })
+);
 
 //mock URL info
 const urlDatabase = {
@@ -34,7 +40,7 @@ const users = {
 };
 
 //helper function to compare if password is equal. It assumes the email passed in is already exist in the users obejct
-const isPasswordEqual = function (email, password,) {
+const isPasswordEqual = function (email, password) {
   for (const user of Object.keys(users)) {
     if (
       users[user].email === email &&
@@ -50,8 +56,8 @@ const isPasswordEqual = function (email, password,) {
 app.post('/register', (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
-  const hashedPassword = bcrypt.hashSync(password,10);
-  const user = getUserByEmail(email,users);
+  const hashedPassword = bcrypt.hashSync(password, 10);
+  const user = getUserByEmail(email, users);
   if (email && password && !user) {
     const userID = generateRandomString();
     const user = {
@@ -80,7 +86,7 @@ app.post('/logout', (req, res) => {
 app.post('/login', (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
-  const user = getUserByEmail(email,users);
+  const user = getUserByEmail(email, users);
   if (!user) {
     res.statusCode = 403;
     res.send('The email is not found');
@@ -183,18 +189,31 @@ app.get('/urls/new', (req, res) => {
 app.get('/urls/:shortURL', (req, res) => {
   const userId = req.session.user_id;
   const user = users[userId];
-  const templateVars = {
-    shortURL: req.params.shortURL,
-    longURL: urlDatabase[req.params.shortURL].longURL,
-    user,
-  };
-  res.render('urls_show', templateVars);
+  const shortURL = req.params.shortURL;
+  if (!urlDatabase[shortURL]) {
+    res.send('The URL for the given ID does not exist!');
+    return;
+  }
+  if (!userId) {
+    res.send('Please login to access the short URL');
+    return;
+  }
+  if (urlDatabase[shortURL].userID === userId) {
+    const templateVars = {
+      shortURL,
+      longURL: urlDatabase[req.params.shortURL].longURL,
+      user,
+    };
+    res.render('urls_show', templateVars);
+  } else {
+    res.send("You don't have the access to this URL");
+  }
 });
 
 //home page
 app.get('/urls', (req, res) => {
   const userId = req.session.user_id;
-  const urls = urlsForUser(userId,urlDatabase);
+  const urls = urlsForUser(userId, urlDatabase);
   const templateVars = {
     urls,
     user: users[userId],
@@ -205,6 +224,15 @@ app.get('/urls', (req, res) => {
 app.get('/urls.json', (req, res) => {
   res.json(urlDatabase);
 });
+//home page redirect to /urls if the user has login, otherwise redirect to the login page.
+app.get('/', (req, res) => {
+  if (req.session.user_id) {
+    res.redirect('/urls');
+  } else {
+    res.redirect('/login');
+  }
+});
+
 //404 page
 app.get('*', (req, res) => {
   res.statusCode = 404;
