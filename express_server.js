@@ -3,6 +3,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cookieSession = require('cookie-session');
 const bcrypt = require('bcrypt');
+const methodOverride = require('method-override');
+
 const {
   getUserByEmail,
   urlsForUser,
@@ -19,6 +21,7 @@ app.use(
     keys: ['key1', 'key2'],
   })
 );
+app.use(methodOverride('_method'));
 
 //mock URL info
 const urlDatabase = {
@@ -103,7 +106,7 @@ app.post('/login', (req, res) => {
 });
 
 //delete URL
-app.post('/urls/:shortURL/delete', (req, res) => {
+app.delete('/urls/:shortURL', (req, res) => {
   const userID = req.session.user_id;
   const shortURL = req.params.shortURL;
   if (urlDatabase[shortURL].userID === userID) {
@@ -114,7 +117,7 @@ app.post('/urls/:shortURL/delete', (req, res) => {
   }
 });
 //update URL
-app.post('/urls/:shortURL/edit', (req, res) => {
+app.put('/urls/:shortURL', (req, res) => {
   const userID = req.session.user_id;
   const shortURL = req.params.shortURL;
   if (urlDatabase[shortURL].userID === userID) {
